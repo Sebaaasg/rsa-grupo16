@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cifrado RSA - MM2015 Matemática Discreta 1</title>
+  <style>
+    :root {
+      --fondo: #f0f0f0;
+      --panel: #ffffff;
+      --borde: #abadb3;
+      --borde-suave: #d4d4d4;
+      --fila-alterna: #f4f4f4;
+      --fila-relleno: #e0e0e0;
+      --texto: #1a1a1a;
+      --texto-suave: #5f5f5f;
+      --error: #a31515;
+      --error-fondo: #fdecec;
+      --acento: #2f5f8f;
+      --mono: ui-monospace, "Cascadia Mono", Consolas, Menlo, "DejaVu Sans Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--fondo);
+      color: var(--texto);
+      font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .barra-titulo {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 16px;
+      background: #e5e5e5;
+      border-bottom: 1px solid var(--borde-suave);
+    }
+    .barra-titulo h1 { margin: 0; font-size: 16px; font-weight: 600; }
+    .barra-titulo nav { display: flex; gap: 6px; }
+
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 12px 16px;
+    }
+
+    button {
+      font: inherit;
+      padding: 5px 14px;
+      color: var(--texto);
+      background: #fdfdfd;
+      border: 1px solid var(--borde);
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { background: #eaf1f8; border-color: var(--acento); }
+    button:disabled { color: #9a9a9a; cursor: not-allowed; }
+    button.principal { border: 2px solid var(--acento); padding: 4px 13px; }
+
+    input, textarea {
+      width: 100%;
+      font: 15px var(--mono);
+      color: var(--texto);
+      background: var(--panel);
+      border: 1px solid var(--borde);
+      border-radius: 2px;
+      padding: 4px 6px;
+    }
+    textarea { resize: vertical; min-height: 64px; }
+    input[readonly] { background: #f7f7f7; }
+    input:focus, textarea:focus { outline: 2px solid #9cbbd9; outline-offset: -1px; }
+
+    /* Pestañas */
+    .pestanas { display: flex; gap: 2px; border-bottom: 1px solid var(--borde); }
+    .pestanas button {
+      border-radius: 3px 3px 0 0;
+      border-bottom: none;
+      background: #dcdcdc;
+      margin-bottom: -1px;
+    }
+    .pestanas button[aria-selected="true"] { background: var(--fondo); border-bottom: 1px solid var(--fondo); font-weight: 600; }
+
+    .pestana {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--borde);
+      border-top: none;
+    }
+    .pestana[hidden] { display: none; }
+    .columna { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+    fieldset {
+      margin: 0;
+      padding: 8px 12px 12px;
+      border: 1px solid var(--borde-suave);
+      border-radius: 3px;
+      min-width: 0;
+    }
+    legend { padding: 0 4px; }
+
+    .formulario {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 6px 10px;
+    }
+    .formulario label { white-space: nowrap; }
+    .arriba { align-self: start; padding-top: 4px; }
+    .pista { grid-column: 2; margin-top: -3px; color: var(--texto-suave); font-size: 13px; white-space: pre-line; }
+    .botones { grid-column: 1 / -1; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+    .valores { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; margin: 0; }
+    .valores dt { margin: 0; }
+    .valores dd { margin: 0; font: 600 14px var(--mono); overflow-wrap: anywhere; }
+
+    .resultado-c { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+    .resultado-c .fila-l { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .resultado-c .fila-l input { width: 90px; }
+    .resultado-c .fila-l .espacio { flex: 1; }
+
+    .caja-salida {
+      min-height: 64px;
+      padding: 4px 6px;
+      font: 15px var(--mono);
+      background: var(--panel);
+      border: 1px solid var(--borde);
+      border-radius: 2px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .caja-salida.baja { min-height: 40px; }
+
+    .aviso-error {
+      padding: 8px 10px;
+      color: var(--error);
+      background: var(--error-fondo);
+      border: 1px solid #e3b4b4;
+      border-radius: 3px;
+    }
+    .aviso-error[hidden] { display: none; }
+
+    .proceso { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .tabla-titulo { margin: 0 0 4px; font-weight: normal; font-size: 14px; }
+    .tabla-marco {
+      height: 260px;
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--borde);
+    }
+    table { width: 100%; border-collapse: collapse; font: 14px var(--mono); }
+    th {
+      position: sticky;
+      top: 0;
+      padding: 4px 6px;
+      font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #e5e5e5;
+      border-bottom: 1px solid var(--borde);
+    }
+    td { padding: 3px 6px; text-align: center; white-space: pre; }
+    tr.alterna td { background: var(--fila-alterna); }
+    tr.relleno td { background: var(--fila-relleno); }
+
+    .nota { margin: 10px 2px 0; color: var(--texto-suave); font-size: 13px; }
+
+    .estado {
+      padding: 4px 16px;
+      background: #e9e9e9;
+      border-top: 1px solid var(--borde);
+      min-height: 26px;
+    }
+    .estado.error { color: var(--error); }
+
+    dialog { max-width: 520px; border: 1px solid var(--borde); border-radius: 4px; padding: 16px 18px; }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.25); }
+    dialog h2 { margin: 0 0 8px; font-size: 16px; }
+    dialog p, dialog ol { margin: 0 0 10px; }
+    dialog form { text-align: right; }
+
+    @media (max-width: 900px) {
+      .pestana { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      .proceso { grid-template-columns: 1fr; }
+      .barra-titulo { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header class="barra-titulo">
+    <h1>Cifrado RSA - MM2015 Matemática Discreta 1</h1>
+    <nav>
+      <button type="button" data-abrir="dialogo-ayuda">Cómo usar</button>
+      <button type="button" data-abrir="dialogo-acerca">Acerca de</button>
+    </nav>
+  </header>
+
+  <main>
+    <div class="pestanas" role="tablist">
+      <button type="button" role="tab" id="boton-encriptar" aria-controls="pestana-encriptar" aria-selected="true">Encriptar</button>
+      <button type="button" role="tab" id="boton-desencriptar" aria-controls="pestana-desencriptar" aria-selected="false">Desencriptar</button>
+    </div>
+
+    <!-- Pestaña Encriptar -->
+    <section class="pestana" id="pestana-encriptar" role="tabpanel" aria-labelledby="boton-encriptar">
+      <div class="columna">
+        <fieldset>
+          <legend>Datos</legend>
+          <form class="formulario" id="form-encriptar" autocomplete="off">
+            <label for="enc-mensaje">Mensaje M:</label>
+            <input id="enc-mensaje" type="text" spellcheck="false">
+            <span class="pista" id="enc-contador">L = 0</span>
+            <label for="enc-p">Primo p:</label>
+            <input id="enc-p" type="text" inputmode="numeric">
+            <label for="enc-q">Primo q:</label>
+            <input id="enc-q" type="text" inputmode="numeric">
+            <label for="enc-e">Exponente e:</label>
+            <input id="enc-e" type="text" inputmode="numeric">
+            <div class="botones">
+              <button type="submit" class="principal requiere-python">Encriptar</button>
+              <button type="button" id="enc-ejemplo">Ejemplo RSA</button>
+              <button type="button" id="enc-limpiar">Limpiar</button>
+            </div>
+          </form>
+        </fieldset>
+
+        <fieldset>
+          <legend>Valores calculados</legend>
+          <dl class="valores">
+            <dt>n = p · q:</dt><dd id="enc-n">-</dd>
+            <dt>φ = (p − 1)(q − 1):</dt><dd id="enc-phi">-</dd>
+            <dt>MCD(e, φ):</dt><dd id="enc-mcd">-</dd>
+            <dt>Llave pública (e, n):</dt><dd id="enc-llave">-</dd>
+            <dt>Longitud L:</dt><dd id="enc-l-valor">-</dd>
+            <dt>Relleno:</dt><dd id="enc-relleno">-</dd>
+          </dl>
+        </fieldset>
+      </div>
+
+      <div class="columna">
+        <div class="aviso-error" id="enc-error" role="alert" hidden></div>
+
+        <fieldset>
+          <legend>Resultado</legend>
+          <div class="resultado-c">
+            <span class="arriba">Cifrado C:</span>
+            <div class="caja-salida" id="enc-c"></div>
+            <label for="enc-l">Longitud L:</label>
+            <div class="fila-l">
+              <input id="enc-l" type="text" readonly>
+              <span class="espacio"></span>
+              <button type="button" id="enc-copiar">Copiar C</button>
+              <button type="button" id="enc-pasar">Pasar a Desencriptar</button>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Proceso</legend>
+          <div class="proceso">
+            <div>
+              <h3 class="tabla-titulo">Caracteres y código ASCII</h3>
+              <div class="tabla-marco">
+                <table>
+                  <thead><tr><th>Posición</th><th>Carácter</th><th>ASCII</th></tr></thead>
+                  <tbody id="enc-tabla-ascii"></tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h3 class="tabla-titulo">Bloques antes y después</h3>
+              <div class="tabla-marco">
+                <table>
+                  <thead><tr><th>Bloque</th><th>Pareja</th><th>m (antes)</th><th>c (después)</th></tr></thead>
+                  <tbody id="enc-tabla-bloques"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+
+    <!-- Pestaña Desencriptar -->
+    <section class="pestana" id="pestana-desencriptar" role="tabpanel" aria-labelledby="boton-desencriptar" hidden>
+      <div class="columna">
+        <fieldset>
+          <legend>Datos</legend>
+          <form class="formulario" id="form-desencriptar" autocomplete="off">
+            <label for="dec-c" class="arriba">Cifrado C:</label>
+            <textarea id="dec-c" rows="3" spellcheck="false"></textarea>
+            <span class="pista">Bloques de 6 dígitos</span>
+            <label for="dec-l">Longitud L:</label>
+            <input id="dec-l" type="text" inputmode="numeric">
+            <label for="dec-p">Primo p:</label>
+            <input id="dec-p" type="text" inputmode="numeric">
+            <label for="dec-q">Primo q:</label>
+            <input id="dec-q" type="text" inputmode="numeric">
+            <label for="dec-e">Exponente e:</label>
+            <input id="dec-e" type="text" inputmode="numeric">
+            <div class="botones">
+              <button type="submit" class="principal requiere-python">Desencriptar</button>
+              <button type="button" id="dec-limpiar">Limpiar</button>
+            </div>
+          </form>
+        </fieldset>
+
+        <fieldset>
+          <legend>Valores calculados</legend>
+          <dl class="valores">
+            <dt>n = p · q:</dt><dd id="dec-n">-</dd>
+            <dt>φ = (p − 1)(q − 1):</dt><dd id="dec-phi">-</dd>
+            <dt>Exponente privado d:</dt><dd id="dec-d">-</dd>
+            <dt>Comprobación e · d mod φ:</dt><dd id="dec-prueba">-</dd>
+            <dt>Llave privada (d, n):</dt><dd id="dec-llave">-</dd>
+            <dt>Relleno:</dt><dd id="dec-relleno">-</dd>
+          </dl>
+        </fieldset>
+      </div>
+
+      <div class="columna">
+        <div class="aviso-error" id="dec-error" role="alert" hidden></div>
+
+        <fieldset>
+          <legend>Resultado</legend>
+          <div class="resultado-c">
+            <span class="arriba">Mensaje M:</span>
+            <div class="caja-salida baja" id="dec-m"></div>
+            <span></span>
+            <span class="pista" id="dec-detalle"></span>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Proceso</legend>
+          <div class="proceso">
+            <div>
+              <h3 class="tabla-titulo">Bloques antes y después</h3>
+              <div class="tabla-marco">
+                <table>
+                  <thead><tr><th>Bloque</th><th>c (antes)</th><th>m (después)</th><th>Pareja</th></tr></thead>
+                  <tbody id="dec-tabla-bloques"></tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h3 class="tabla-titulo">Código ASCII y caracteres</h3>
+              <div class="tabla-marco">
+                <table>
+                  <thead><tr><th>Posición</th><th>ASCII</th><th>Carácter</th></tr></thead>
+                  <tbody id="dec-tabla-ascii"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+
+    <p class="nota">Los cálculos (MCD, inverso modular, exponenciación modular y validaciones) se ejecutan en Python
+      dentro del navegador con Pyodide, usando el mismo archivo <code>rsa_logic.py</code> del proyecto.</p>
+  </main>
+
+  <footer class="estado" id="estado" role="status">Cargando Python en el navegador. La primera vez puede tardar unos segundos...</footer>
+
+  <dialog id="dialogo-ayuda">
+    <h2>Cómo usar</h2>
+    <p><strong>Encriptar</strong></p>
+    <ol>
+      <li>Escriba el mensaje M y los valores de p, q y e.</li>
+      <li>Presione Encriptar. El cifrado C y la longitud L aparecen en Resultado.</li>
+      <li>Use Pasar a Desencriptar para llevar C, L, p, q y e a la otra pestaña.</li>
+    </ol>
+    <p><strong>Desencriptar</strong></p>
+    <ol>
+      <li>Escriba C (bloques de 6 dígitos separados por espacios), L, p, q y e.</li>
+      <li>Presione Desencriptar. El mensaje recuperado aparece en Resultado.</li>
+    </ol>
+    <p>Si L es impar, al encriptar se agrega un espacio de relleno al final y al desencriptar se quita solo ese espacio.</p>
+    <form method="dialog"><button>Cerrar</button></form>
+  </dialog>
+
+  <dialog id="dialogo-acerca">
+    <h2>Acerca de</h2>
+    <p>Cifrado RSA<br>Proyecto 3 - Matemática Discreta 1<br>Universidad del Valle de Guatemala</p>
+    <p>Grupo 16:<br>Estuardo Sebastián García de León<br>Gabriel Zambrano</p>
+    <p>Lógica en Python (rsa_logic.py), ejecutada en el navegador con Pyodide.</p>
+    <form method="dialog"><button>Cerrar</button></form>
+  </dialog>
+
+  <!-- Puente entre la página y rsa_logic.py. Solo llama a las funciones del proyecto. -->
+  <script type="text/x-python" id="puente-python">
+import json
+import sys
+
+sys.path.insert(0, "/home/pyodide")
+import rsa_logic
+
+LIMITE_PRIMO = 10 ** 12   # con un primo así de grande, n ya queda fuera del rango
+
+
+def _revisar_tamano(nombre, valor):
+    """Evita que la página se congele probando la primalidad de un número enorme."""
+    try:
+        numero = int(str(valor).strip())
+    except ValueError:
+        return None   # rsa_logic da el mensaje de error
+    if numero >= LIMITE_PRIMO:
+        return (f"{nombre} = {numero} es demasiado grande: n = p · q quedaría fuera del rango "
+                f"{rsa_logic.N_MIN} < n < {rsa_logic.N_MAX}.")
+    return None
+
+
+def _responder(funcion, completar, datos, p, q):
+    for nombre, valor in (("p", p), ("q", q)):
+        error = _revisar_tamano(nombre, valor)
+        if error:
+            return json.dumps({"ok": False, "error": error}, ensure_ascii=False)
+    try:
+        resultado = funcion(*datos)
+    except ValueError as error:
+        return json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False)
+    except RecursionError:
+        return json.dumps({"ok": False, "error": "e es demasiado grande para calcular la potencia. Use un e más pequeño."},
+                          ensure_ascii=False)
+    completar(resultado)
+    resultado["e"] = str(resultado["e"])   # JavaScript no representa con exactitud enteros muy grandes
+    return json.dumps({"ok": True, "datos": resultado}, ensure_ascii=False)
+
+
+def encriptar_web(mensaje, p, q, e):
+    def completar(r):
+        r["mcd"] = rsa_logic.mcd(r["e"], r["phi"])
+    return _responder(rsa_logic.encriptar, completar, (mensaje, p, q, e), p, q)
+
+
+def desencriptar_web(cifrado, longitud, p, q, e):
+    def completar(r):
+        r["prueba"] = (r["e"] * r["d"]) % r["phi"]
+    return _responder(rsa_logic.desencriptar, completar, (cifrado, longitud, p, q, e), p, q)
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/pyodide@0.29.5/pyodide.js"></script>
+  <script>
+    "use strict";
+
+    const PYODIDE_URL = "https://cdn.jsdelivr.net/npm/pyodide@0.29.5/";
+    const EJEMPLO = { mensaje: "RSA", p: "367", q: "373", e: "17" };
+    const NOTA_COMILLAS = "Las comillas solo marcan dónde empieza y termina el mensaje.";
+
+    const $ = (id) => document.getElementById(id);
+    let python = null;          // funciones del puente, disponibles cuando Pyodide termina de cargar
+    let ultimoCifrado = null;   // último resultado de Encriptar
+
+    // ---------- utilidades de la interfaz ----------
+
+    const seisDigitos = (numero) => String(numero).padStart(6, "0");
+    const tresDigitos = (numero) => String(numero).padStart(3, "0");
+    const nombreCaracter = (caracter) => (caracter === " " ? "(espacio)" : caracter);
+
+    function mostrarEstado(texto, esError = false) {
+      const estado = $("estado");
+      estado.textContent = esError ? `Error: ${texto}` : texto;
+      estado.classList.toggle("error", esError);
+    }
+
+    function mostrarError(pestana, texto) {
+      const aviso = $(`${pestana}-error`);
+      aviso.textContent = `Dato inválido: ${texto}`;
+      aviso.hidden = false;
+      mostrarEstado(texto, true);
+    }
+
+    function ocultarError(pestana) {
+      $(`${pestana}-error`).hidden = true;
+    }
+
+    function llenarTabla(idCuerpo, filas) {
+      const cuerpo = $(idCuerpo);
+      cuerpo.replaceChildren();
+      filas.forEach(({ celdas, relleno }, indice) => {
+        const fila = document.createElement("tr");
+        if (relleno) fila.className = "relleno";
+        else if (indice % 2 === 1) fila.className = "alterna";
+        for (const texto of celdas) {
+          const celda = document.createElement("td");
+          celda.textContent = texto;
+          fila.appendChild(celda);
+        }
+        cuerpo.appendChild(fila);
+      });
+    }
+
+    function llenarValores(prefijo, valores) {
+      for (const [clave, valor] of Object.entries(valores)) {
+        $(`${prefijo}-${clave}`).textContent = valor;
+      }
+    }
+
+    function filasAscii(caracteres, hayRelleno, columnas) {
+      const ultimo = caracteres.length - 1;
+      return caracteres.map(([caracter, codigo], i) => {
+        const esRelleno = hayRelleno && i === ultimo;
+        const nombre = esRelleno ? "(relleno)" : nombreCaracter(caracter);
+        return { celdas: columnas(i + 1, nombre, tresDigitos(codigo)), relleno: esRelleno };
+      });
+    }
+
+    function cambiarPestana(nombre) {
+      for (const pestana of ["encriptar", "desencriptar"]) {
+        const activa = pestana === nombre;
+        $(`boton-${pestana}`).setAttribute("aria-selected", String(activa));
+        $(`pestana-${pestana}`).hidden = !activa;
+      }
+    }
+
+    function llamarPython(funcion, ...datos) {
+      return JSON.parse(funcion(...datos));
+    }
+
+    // ---------- Encriptar ----------
+
+    function contarCaracteres() {
+      const L = Array.from($("enc-mensaje").value).length;
+      let texto = "L = 0";
+      if (L > 0) texto = L % 2 === 1 ? `L = ${L}, impar: lleva relleno` : `L = ${L}, par: sin relleno`;
+      $("enc-contador").textContent = texto;
+    }
+
+    function limpiarResultadosEncriptar() {
+      ultimoCifrado = null;
+      $("enc-c").textContent = "";
+      $("enc-l").value = "";
+      llenarValores("enc", { n: "-", phi: "-", mcd: "-", llave: "-", "l-valor": "-", relleno: "-" });
+      llenarTabla("enc-tabla-ascii", []);
+      llenarTabla("enc-tabla-bloques", []);
+    }
+
+    function encriptar() {
+      if (!python) return;
+      ocultarError("enc");
+      const respuesta = llamarPython(python.encriptar,
+        $("enc-mensaje").value, $("enc-p").value, $("enc-q").value, $("enc-e").value);
+
+      if (!respuesta.ok) {
+        limpiarResultadosEncriptar();
+        mostrarError("enc", respuesta.error);
+        return;
+      }
+
+      const r = respuesta.datos;
+      ultimoCifrado = r;
+      $("enc-c").textContent = r.C;
+      $("enc-l").value = r.L;
+      llenarValores("enc", {
+        n: r.n,
+        phi: r.phi,
+        mcd: r.mcd,
+        llave: `(${r.e}, ${r.n})`,
+        "l-valor": r.L,
+        relleno: r.relleno ? "Sí, un espacio" : "No, L es par",
+      });
+      llenarTabla("enc-tabla-ascii",
+        filasAscii(r.caracteres, r.relleno, (pos, nombre, ascii) => [pos, nombre, ascii]));
+      llenarTabla("enc-tabla-bloques", r.bloques.map((b, i) => ({
+        celdas: [i + 1, `"${b.pareja}"`, seisDigitos(b.m), seisDigitos(b.c)],
+      })));
+      mostrarEstado(`Mensaje encriptado en ${r.bloques.length} bloque(s). L = ${r.L}.`);
+    }
+
+    async function copiarC() {
+      if (!ultimoCifrado) {
+        mostrarError("enc", "Primero encripte un mensaje.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(ultimoCifrado.C);
+      } catch {
+        const temporal = document.createElement("textarea");
+        temporal.value = ultimoCifrado.C;
+        document.body.appendChild(temporal);
+        temporal.select();
+        document.execCommand("copy");
+        temporal.remove();
+      }
+      mostrarEstado("C copiado al portapapeles.");
+    }
+
+    function pasarADesencriptar() {
+      if (!ultimoCifrado) {
+        mostrarError("enc", "Primero encripte un mensaje.");
+        return;
+      }
+      $("dec-c").value = ultimoCifrado.C;
+      $("dec-l").value = ultimoCifrado.L;
+      $("dec-p").value = ultimoCifrado.p;
+      $("dec-q").value = ultimoCifrado.q;
+      $("dec-e").value = ultimoCifrado.e;
+      limpiarResultadosDesencriptar();
+      ocultarError("dec");
+      cambiarPestana("desencriptar");
+      mostrarEstado("C, L, p, q y e pasaron a Desencriptar. Presione Desencriptar.");
+    }
+
+    function cargarEjemplo() {
+      $("enc-mensaje").value = EJEMPLO.mensaje;
+      $("enc-p").value = EJEMPLO.p;
+      $("enc-q").value = EJEMPLO.q;
+      $("enc-e").value = EJEMPLO.e;
+      contarCaracteres();
+      ocultarError("enc");
+      cambiarPestana("encriptar");
+      mostrarEstado('Ejemplo del enunciado cargado: "RSA" con p = 367, q = 373 y e = 17.');
+    }
+
+    function limpiarEncriptar() {
+      for (const id of ["enc-mensaje", "enc-p", "enc-q", "enc-e"]) $(id).value = "";
+      contarCaracteres();
+      ocultarError("enc");
+      limpiarResultadosEncriptar();
+      mostrarEstado("Datos de Encriptar borrados.");
+    }
+
+    // ---------- Desencriptar ----------
+
+    function limpiarResultadosDesencriptar() {
+      $("dec-m").textContent = "";
+      $("dec-detalle").textContent = NOTA_COMILLAS;
+      llenarValores("dec", { n: "-", phi: "-", d: "-", prueba: "-", llave: "-", relleno: "-" });
+      llenarTabla("dec-tabla-bloques", []);
+      llenarTabla("dec-tabla-ascii", []);
+    }
+
+    function desencriptar() {
+      if (!python) return;
+      ocultarError("dec");
+      const respuesta = llamarPython(python.desencriptar,
+        $("dec-c").value, $("dec-l").value, $("dec-p").value, $("dec-q").value, $("dec-e").value);
+
+      if (!respuesta.ok) {
+        limpiarResultadosDesencriptar();
+        mostrarError("dec", respuesta.error);
+        return;
+      }
+
+      const r = respuesta.datos;
+      const caracteres = Array.from(r.mensaje).length;
+      $("dec-m").textContent = `"${r.mensaje}"`;
+      const quitado = r.relleno ? "Se quitó el espacio de relleno." : "No había relleno.";
+      $("dec-detalle").textContent = `${caracteres} caracteres, igual a L = ${r.L}. ${quitado}\n${NOTA_COMILLAS}`;
+      llenarValores("dec", {
+        n: r.n,
+        phi: r.phi,
+        d: r.d,
+        prueba: r.prueba,
+        llave: `(${r.d}, ${r.n})`,
+        relleno: r.relleno ? `Sí, L = ${r.L} impar` : `No, L = ${r.L} par`,
+      });
+      llenarTabla("dec-tabla-bloques", r.bloques.map((b, i) => ({
+        celdas: [i + 1, seisDigitos(b.c), seisDigitos(b.m), `"${b.pareja}"`],
+      })));
+      llenarTabla("dec-tabla-ascii",
+        filasAscii(r.caracteres, r.relleno, (pos, nombre, ascii) => [pos, ascii, nombre]));
+      mostrarEstado(`Mensaje recuperado: ${r.k} bloque(s) con d = ${r.d}, ${caracteres} caracteres.`);
+    }
+
+    function limpiarDesencriptar() {
+      for (const id of ["dec-c", "dec-l", "dec-p", "dec-q", "dec-e"]) $(id).value = "";
+      ocultarError("dec");
+      limpiarResultadosDesencriptar();
+      mostrarEstado("Datos de Desencriptar borrados.");
+    }
+
+    // ---------- Arranque ----------
+
+    function habilitarAcciones(activo) {
+      document.querySelectorAll(".requiere-python").forEach((boton) => { boton.disabled = !activo; });
+    }
+
+    async function iniciarPython() {
+      habilitarAcciones(false);
+      try {
+        const pyodide = await loadPyodide({ indexURL: PYODIDE_URL });
+        const archivo = await fetch("rsa_logic.py", { cache: "no-cache" });
+        if (!archivo.ok) throw new Error(`No se encontró rsa_logic.py (HTTP ${archivo.status}).`);
+        pyodide.FS.writeFile("/home/pyodide/rsa_logic.py", await archivo.text());
+        pyodide.runPython($("puente-python").textContent);
+        python = {
+          encriptar: pyodide.globals.get("encriptar_web"),
+          desencriptar: pyodide.globals.get("desencriptar_web"),
+        };
+        habilitarAcciones(true);
+        mostrarEstado("Listo. El botón Ejemplo RSA llena los datos del ejemplo del enunciado.");
+      } catch (error) {
+        console.error(error);
+        mostrarEstado("No se pudo cargar Python en el navegador. Revise la conexión y recargue la página.", true);
+      }
+    }
+
+    $("boton-encriptar").addEventListener("click", () => cambiarPestana("encriptar"));
+    $("boton-desencriptar").addEventListener("click", () => cambiarPestana("desencriptar"));
+    $("form-encriptar").addEventListener("submit", (evento) => { evento.preventDefault(); encriptar(); });
+    $("form-desencriptar").addEventListener("submit", (evento) => { evento.preventDefault(); desencriptar(); });
+    $("enc-mensaje").addEventListener("input", contarCaracteres);
+    $("enc-ejemplo").addEventListener("click", cargarEjemplo);
+    $("enc-limpiar").addEventListener("click", limpiarEncriptar);
+    $("enc-copiar").addEventListener("click", copiarC);
+    $("enc-pasar").addEventListener("click", pasarADesencriptar);
+    $("dec-limpiar").addEventListener("click", limpiarDesencriptar);
+    document.querySelectorAll("[data-abrir]").forEach((boton) => {
+      boton.addEventListener("click", () => $(boton.dataset.abrir).showModal());
+    });
+
+    limpiarResultadosDesencriptar();
+    iniciarPython();
+  </script>
+</body>
+</html>
